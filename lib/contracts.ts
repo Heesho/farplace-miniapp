@@ -254,19 +254,19 @@ export const MULTICALL_ABI = [
       {
         components: [
           {
-            internalType: "uint256",
+            internalType: "uint16",
             name: "epochId",
-            type: "uint256",
+            type: "uint16",
           },
           {
-            internalType: "uint256",
+            internalType: "uint192",
             name: "initPrice",
-            type: "uint256",
+            type: "uint192",
           },
           {
-            internalType: "uint256",
+            internalType: "uint40",
             name: "startTime",
-            type: "uint256",
+            type: "uint40",
           },
           {
             internalType: "address",
@@ -305,6 +305,29 @@ export const MULTICALL_ABI = [
       },
     ],
     stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "uint256",
+        name: "epochId",
+        type: "uint256",
+      },
+      {
+        internalType: "uint256",
+        name: "deadline",
+        type: "uint256",
+      },
+      {
+        internalType: "uint256",
+        name: "maxPaymentTokenAmount",
+        type: "uint256",
+      },
+    ],
+    name: "buy",
+    outputs: [],
+    stateMutability: "nonpayable",
     type: "function",
   },
 ] as const;
