@@ -710,7 +710,7 @@ export default function HomePage() {
                     </div>
                     {/* Multiplier Badge - Next to MINER label */}
                     <div className="bg-cyan-500 text-black text-[8px] font-bold px-1 py-0.5 rounded-full leading-none">
-                      ×{slotState ? (Number(slotState.multiplier) / 1e18).toFixed(1) : "1.0"}
+                      ×{slotState ? (slotState.multiplier === 0n ? "1.0" : (Number(slotState.multiplier) / 1e18).toFixed(1)) : "1.0"}
                     </div>
                   </div>
                   <div className="flex items-center gap-1 text-xs text-white truncate">
