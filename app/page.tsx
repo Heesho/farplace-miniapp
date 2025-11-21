@@ -95,9 +95,10 @@ const formatAddress = (addr?: string) => {
 };
 
 const formatCountdown = (seconds: number) => {
-  const mins = Math.floor(seconds / 60);
+  const hours = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
   const secs = seconds % 60;
-  return `${mins}:${secs.toString().padStart(2, "0")}`;
+  return `${hours}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
 };
 
 const initialsFrom = (label?: string) => {
@@ -749,19 +750,9 @@ export default function HomePage() {
                     >
                       MINER
                     </div>
-                    {/* Multiplier Badge - Next to MINER label */}
-                    <div className="bg-cyan-500 text-black text-[8px] font-bold px-1 py-0.5 rounded-full leading-none">
-                      ×{slotState && slotState.multiplier !== undefined ? Number(formatUnits(slotState.multiplier, 18)).toFixed(1) : "0.0"}
-                    </div>
                   </div>
                   <div className="flex items-center gap-1 text-xs text-white truncate">
                     <span className="truncate">{occupantDisplay.primary}</span>
-                    {/* Multiplier Countdown - Show when countdown is active */}
-                    {countdownSeconds > 0 && (
-                      <span className="text-[9px] text-gray-400 flex-shrink-0">
-                        • {formatCountdown(countdownSeconds)}
-                      </span>
-                    )}
                   </div>
                 </div>
               </div>
@@ -814,6 +805,38 @@ export default function HomePage() {
                     {pnlUsdValue}
                   </div>
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Pixel/Slot Stats Card */}
+          <Card className="border-zinc-800 bg-black mt-1">
+            <CardContent className="flex items-center justify-between gap-2 p-2">
+              {/* Left: Pixel Index */}
+              <div className="flex flex-col gap-0.5">
+                <div className="text-[7px] font-bold uppercase tracking-[0.08em] text-gray-400">
+                  PIXEL
+                </div>
+                <div className="text-lg font-bold text-white">
+                  #{selectedIndex}
+                </div>
+              </div>
+
+              {/* Right: Multiplier and Countdown */}
+              <div className="flex flex-col gap-0.5 items-end">
+                <div className="flex items-center gap-1">
+                  <div className="text-[7px] font-bold uppercase tracking-[0.08em] text-gray-400">
+                    MULTIPLIER
+                  </div>
+                  <div className="bg-cyan-500 text-black text-xs font-bold px-1.5 py-0.5 rounded-full leading-none">
+                    ×{slotState && slotState.multiplier !== undefined ? Number(formatUnits(slotState.multiplier, 18)).toFixed(1) : "0.0"}
+                  </div>
+                </div>
+                {countdownSeconds > 0 && (
+                  <div className="text-[9px] text-gray-400">
+                    New in {formatCountdown(countdownSeconds)}
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
