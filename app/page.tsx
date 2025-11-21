@@ -262,23 +262,7 @@ export default function HomePage() {
 
   const allSlots = useMemo(() => {
     if (!rawAllSlots) return [];
-    const slots = rawAllSlots as unknown as SlotState[];
-    // Debug: Log slot 0 to check multiplier
-    if (slots.length > 0) {
-      console.log('Slot 0 data:', {
-        epochId: slots[0].epochId.toString(),
-        initPrice: slots[0].initPrice.toString(),
-        startTime: slots[0].startTime.toString(),
-        price: slots[0].price.toString(),
-        multiplier: slots[0].multiplier.toString(),
-        multiplierFormatted: formatUnits(slots[0].multiplier, 18),
-        pps: slots[0].pps.toString(),
-        mined: slots[0].mined.toString(),
-        miner: slots[0].miner,
-        color: slots[0].color,
-      });
-    }
-    return slots;
+    return rawAllSlots as unknown as SlotState[];
   }, [rawAllSlots]);
 
   // Get the selected slot from the allSlots array
@@ -416,17 +400,6 @@ export default function HomePage() {
         functionName: "getEntropyFee",
         chainId: base.id,
       }) as bigint;
-
-      console.log('Mining transaction params:', {
-        price: price.toString(),
-        epochId: epochId.toString(),
-        deadline: deadline.toString(),
-        maxPrice: maxPrice.toString(),
-        entropyFee: entropyFee.toString(),
-        totalValue: (price + entropyFee).toString(),
-        selectedIndex,
-        selectedColor,
-      });
 
       await writeContract({
         account: targetAddress as Address,

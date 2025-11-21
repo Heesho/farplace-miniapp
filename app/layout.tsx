@@ -2,7 +2,7 @@ import "@/app/globals.css";
 import type { Metadata } from "next";
 import { Providers } from "@/components/providers";
 
-const appDomain = "https://glazecorp.vercel.app";
+const appDomain = "https://pixel-miner-miniapp.vercel.app";
 const heroImageUrl = `${appDomain}/media/hero.png`;
 const splashImageUrl = `${appDomain}/media/splash.png`;
 
@@ -10,10 +10,10 @@ const miniAppEmbed = {
   version: "1",
   imageUrl: heroImageUrl,
   button: {
-    title: "We Glaze The World",
+    title: "Start Mining",
     action: {
       type: "launch_miniapp" as const,
-      name: "GlazeCorp",
+      name: "Pixel Miner",
       url: appDomain,
       splashImageUrl,
       splashBackgroundColor: "#FEE7EC",
@@ -22,11 +22,11 @@ const miniAppEmbed = {
 };
 
 export const metadata: Metadata = {
-  title: "We Glaze The World",
-  description: "Claim the glaze factory and earn donuts on Base.",
+  title: "Pixel Miner",
+  description: "Mine pixels and earn rewards on Base blockchain.",
   openGraph: {
-    title: "GlazeCorp",
-    description: "Race the hive to control the donut mine and keep the glaze flowing.",
+    title: "Pixel Miner - Mine Pixels on Base",
+    description: "Command your pixel mining operation and compete with other miners to earn rewards.",
     url: appDomain,
     images: [
       {
