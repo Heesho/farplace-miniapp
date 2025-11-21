@@ -617,7 +617,6 @@ export default function HomePage() {
   const handleViewKingGlazerProfile = useCallback(() => {
     const fid = neynarUser?.user?.fid;
     const username = neynarUser?.user?.username;
-    console.log("King Glazer clicked, FID:", fid, "Username:", username);
 
     if (username) {
       // Open Farcaster profile URL using username (cleaner URL)
@@ -625,8 +624,6 @@ export default function HomePage() {
     } else if (fid) {
       // Fallback to FID-based URL if username not available
       window.open(`https://warpcast.com/~/profiles/${fid}`, "_blank", "noopener,noreferrer");
-    } else {
-      console.log("No FID or username available for King Glazer");
     }
   }, [neynarUser?.user?.fid, neynarUser?.user?.username]);
 
