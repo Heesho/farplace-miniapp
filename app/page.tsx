@@ -811,19 +811,19 @@ export default function HomePage() {
 
           {/* Pixel/Slot Stats Card */}
           <Card className="border-zinc-800 bg-black mt-1">
-            <CardContent className="flex items-center justify-between gap-2 p-2">
+            <CardContent className="flex items-center justify-between gap-2 p-1.5">
               {/* Left: Pixel Index */}
-              <div className="flex flex-col gap-0.5">
+              <div className="flex items-center gap-2">
                 <div className="text-[7px] font-bold uppercase tracking-[0.08em] text-gray-400">
                   PIXEL
                 </div>
-                <div className="text-lg font-bold text-white">
+                <div className="text-base font-bold text-white">
                   #{selectedIndex}
                 </div>
               </div>
 
               {/* Right: Multiplier and Countdown */}
-              <div className="flex flex-col gap-0.5 items-end">
+              <div className="flex items-center gap-2">
                 <div className="flex items-center gap-1">
                   <div className="text-[7px] font-bold uppercase tracking-[0.08em] text-gray-400">
                     MULTIPLIER
@@ -833,7 +833,7 @@ export default function HomePage() {
                   </div>
                 </div>
                 {countdownSeconds > 0 && (
-                  <div className="text-[9px] text-gray-400">
+                  <div className="text-[9px] text-gray-400 whitespace-nowrap">
                     New in {formatCountdown(countdownSeconds)}
                   </div>
                 )}
