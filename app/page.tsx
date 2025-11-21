@@ -11,6 +11,7 @@ import {
   useWaitForTransactionReceipt,
   useWriteContract,
 } from "wagmi";
+import { readContract } from "wagmi/actions";
 import { base } from "wagmi/chains";
 import { formatEther, formatUnits, zeroAddress, type Address } from "viem";
 
@@ -33,19 +34,23 @@ type MiniAppContext = {
 };
 
 type MinerState = {
-  epochId: bigint | number;
-  initPrice: bigint;
-  startTime: bigint | number;
-  glazed: bigint;
-  price: bigint;
-  dps: bigint;
-  nextDps: bigint;
-  donutPrice: bigint;
-  miner: Address;
-  uri: string;
+  pps: bigint;
+  pixelPrice: bigint;
+  pixelBalance: bigint;
   ethBalance: bigint;
   wethBalance: bigint;
-  donutBalance: bigint;
+};
+
+type SlotState = {
+  epochId: bigint;
+  initPrice: bigint;
+  startTime: bigint;
+  price: bigint;
+  multiplier: bigint;
+  pps: bigint;
+  mined: bigint;
+  miner: Address;
+  color: string;
 };
 
 const DONUT_DECIMALS = 18;
@@ -94,6 +99,30 @@ const initialsFrom = (label?: string) => {
   return stripped.slice(0, 2).toUpperCase();
 };
 
+const COLORS = [
+  "#FF0000", // Red
+  "#FF6B00", // Orange
+  "#FFD700", // Gold
+  "#00FF00", // Lime
+  "#00FFFF", // Cyan
+  "#0080FF", // Blue
+  "#8000FF", // Purple
+  "#FF00FF", // Magenta
+  "#FF1493", // Deep Pink
+  "#FFFFFF", // White
+  "#808080", // Gray
+  "#000000", // Black
+];
+
+const getTextColor = (bgColor: string) => {
+  const hex = bgColor.replace("#", "");
+  const r = parseInt(hex.substr(0, 2), 16);
+  const g = parseInt(hex.substr(2, 2), 16);
+  const b = parseInt(hex.substr(4, 2), 16);
+  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+  return brightness > 128 ? "#000000" : "#FFFFFF";
+};
+
 export default function HomePage() {
   const readyRef = useRef(false);
   const autoConnectAttempted = useRef(false);
@@ -103,6 +132,8 @@ export default function HomePage() {
   const [glazeResult, setGlazeResult] = useState<"success" | "failure" | null>(
     null,
   );
+  const [selectedColor, setSelectedColor] = useState("#FF0000");
+  const [selectedIndex, setSelectedIndex] = useState<number>(0);
   const glazeResultTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
@@ -216,6 +247,41 @@ export default function HomePage() {
     return rawMinerState as unknown as MinerState;
   }, [rawMinerState]);
 
+  // Fetch all slots (0-255) in one call - super efficient!
+  const { data: rawAllSlots, refetch: refetchAllSlots } = useReadContract({
+    address: CONTRACT_ADDRESSES.multicall,
+    abi: MULTICALL_ABI,
+    functionName: "getSlots",
+    args: [BigInt(0), BigInt(255)],
+    chainId: base.id,
+    query: {
+      refetchInterval: 3_000, // Keep it fresh with 3 second refresh
+    },
+  });
+
+  const allSlots = useMemo(() => {
+    if (!rawAllSlots) return [];
+    return rawAllSlots as unknown as SlotState[];
+  }, [rawAllSlots]);
+
+  // Get the selected slot from the allSlots array
+  const slotState = useMemo(() => {
+    if (!allSlots || allSlots.length === 0) return undefined;
+    return allSlots[selectedIndex];
+  }, [allSlots, selectedIndex]);
+
+  // Find which slots the current user owns
+  const ownedSlotIndices = useMemo(() => {
+    if (!address || !allSlots || allSlots.length === 0) return new Set<number>();
+    const owned = new Set<number>();
+    allSlots.forEach((slot, index) => {
+      if (slot.miner.toLowerCase() === address.toLowerCase()) {
+        owned.add(index);
+      }
+    });
+    return owned;
+  }, [address, allSlots]);
+
   const { data: accountData } = useAccountData(address);
 
   useEffect(() => {
@@ -247,18 +313,19 @@ export default function HomePage() {
         receipt.status === "success" ? "success" : "failure",
       );
       refetchMinerState();
+      refetchAllSlots(); // Refresh the entire grid
       const resetTimer = setTimeout(() => {
         resetWrite();
       }, 500);
       return () => clearTimeout(resetTimer);
     }
     return;
-  }, [receipt, refetchMinerState, resetWrite, showGlazeResult]);
+  }, [receipt, refetchMinerState, refetchAllSlots, resetWrite, showGlazeResult]);
 
-  const minerAddress = minerState?.miner ?? zeroAddress;
+  const minerAddress = slotState?.miner ?? zeroAddress;
   const hasMiner = minerAddress !== zeroAddress;
 
-  const claimedHandleParam = (minerState?.uri ?? "").trim();
+  const claimedHandleParam = (slotState?.color ?? "").trim();
 
   const { data: neynarUser } = useQuery<{
     user: {
@@ -291,7 +358,7 @@ export default function HomePage() {
   });
 
   const handleGlaze = useCallback(async () => {
-    if (!minerState) return;
+    if (!slotState) return;
     resetGlazeResult();
     try {
       let targetAddress = address;
@@ -308,12 +375,21 @@ export default function HomePage() {
       if (!targetAddress) {
         throw new Error("Unable to determine wallet address.");
       }
-      const price = minerState.price;
-      const epochId = toBigInt(minerState.epochId);
+      const price = slotState.price;
+      const epochId = slotState.epochId;
       const deadline = BigInt(
         Math.floor(Date.now() / 1000) + DEADLINE_BUFFER_SECONDS,
       );
       const maxPrice = price === 0n ? 0n : (price * 105n) / 100n;
+
+      // Get entropy fee
+      const entropyFee = await readContract({
+        address: CONTRACT_ADDRESSES.multicall as Address,
+        abi: MULTICALL_ABI,
+        functionName: "getEntropyFee",
+        chainId: base.id,
+      }) as bigint;
+
       await writeContract({
         account: targetAddress as Address,
         address: CONTRACT_ADDRESSES.multicall as Address,
@@ -321,24 +397,26 @@ export default function HomePage() {
         functionName: "mine",
         args: [
           CONTRACT_ADDRESSES.provider as Address,
+          BigInt(selectedIndex),
           epochId,
           deadline,
           maxPrice,
-          customMessage.trim(),
+          selectedColor,
         ],
-        value: price,
+        value: price + entropyFee,
         chainId: base.id,
       });
     } catch (error) {
-      console.error("Failed to glaze:", error);
+      console.error("Failed to mine:", error);
       showGlazeResult("failure");
       resetWrite();
     }
   }, [
     address,
     connectAsync,
-    customMessage,
-    minerState,
+    selectedColor,
+    selectedIndex,
+    slotState,
     primaryConnector,
     resetGlazeResult,
     resetWrite,
@@ -346,34 +424,34 @@ export default function HomePage() {
     writeContract,
   ]);
 
-  // Local state for smooth glazed counter interpolation
-  const [interpolatedGlazed, setInterpolatedGlazed] = useState<bigint | null>(null);
+  // Local state for smooth mined counter interpolation
+  const [interpolatedMined, setInterpolatedMined] = useState<bigint | null>(null);
 
-  // Update interpolated glazed amount smoothly between fetches
+  // Update interpolated mined amount smoothly between fetches
   useEffect(() => {
-    if (!minerState) {
-      setInterpolatedGlazed(null);
+    if (!slotState) {
+      setInterpolatedMined(null);
       return;
     }
 
     // Start with the fetched value
-    setInterpolatedGlazed(minerState.glazed);
+    setInterpolatedMined(slotState.mined);
 
     // Update every second with interpolated value
     const interval = setInterval(() => {
-      if (minerState.nextDps > 0n) {
-        setInterpolatedGlazed((prev) => {
-          if (!prev) return minerState.glazed;
-          return prev + minerState.nextDps;
+      if (slotState.pps > 0n) {
+        setInterpolatedMined((prev) => {
+          if (!prev) return slotState.mined;
+          return prev + slotState.pps;
         });
       }
     }, 1_000);
 
     return () => clearInterval(interval);
-  }, [minerState]);
+  }, [slotState]);
 
   const occupantDisplay = useMemo(() => {
-    if (!minerState) {
+    if (!slotState) {
       return {
         primary: "—",
         secondary: "",
@@ -383,7 +461,7 @@ export default function HomePage() {
         addressLabel: "—",
       };
     }
-    const minerAddr = minerState.miner;
+    const minerAddr = slotState.miner;
     const fallback = formatAddress(minerAddr);
     const isYou =
       !!address &&
@@ -458,36 +536,36 @@ export default function HomePage() {
     context?.user?.displayName,
     context?.user?.pfpUrl,
     context?.user?.username,
-    minerState,
+    slotState,
     neynarUser?.user,
   ]);
 
-  const glazeRateDisplay = minerState
-    ? formatTokenAmount(minerState.nextDps, DONUT_DECIMALS, 4)
+  const glazeRateDisplay = slotState
+    ? formatTokenAmount(slotState.pps, DONUT_DECIMALS, 4)
     : "—";
-  const glazePriceDisplay = minerState
-    ? `Ξ${formatEth(minerState.price, minerState.price === 0n ? 0 : 5)}`
+  const glazePriceDisplay = slotState
+    ? `Ξ${formatEth(slotState.price, slotState.price === 0n ? 0 : 5)}`
     : "Ξ—";
-  const glazedDisplay = minerState && interpolatedGlazed !== null
-    ? `🍩${formatTokenAmount(interpolatedGlazed, DONUT_DECIMALS, 2)}`
-    : "🍩—";
+  const minedDisplay = slotState && interpolatedMined !== null
+    ? `▪${formatTokenAmount(interpolatedMined, DONUT_DECIMALS, 2)}`
+    : "▪—";
 
-  // Calculate USD values for donuts
-  const glazedUsdValue = minerState && minerState.donutPrice > 0n && interpolatedGlazed !== null
-    ? (Number(formatEther(interpolatedGlazed)) * Number(formatEther(minerState.donutPrice)) * ethUsdPrice).toFixed(2)
+  // Calculate USD values for pixels
+  const minedUsdValue = minerState && minerState.pixelPrice > 0n && interpolatedMined !== null
+    ? (Number(formatEther(interpolatedMined)) * Number(formatEther(minerState.pixelPrice)) * ethUsdPrice).toFixed(2)
     : "0.00";
 
-  const glazeRateUsdValue = minerState && minerState.donutPrice > 0n
-    ? (Number(formatUnits(minerState.nextDps, DONUT_DECIMALS)) * Number(formatEther(minerState.donutPrice)) * ethUsdPrice).toFixed(4)
+  const glazeRateUsdValue = minerState && slotState && minerState.pixelPrice > 0n
+    ? (Number(formatUnits(slotState.pps, DONUT_DECIMALS)) * Number(formatEther(minerState.pixelPrice)) * ethUsdPrice).toFixed(4)
     : "0.0000";
 
   // Calculate PNL in USD
-  const pnlUsdValue = minerState
+  const pnlUsdValue = slotState
     ? (() => {
-        const halfInitPrice = minerState.initPrice / 2n;
-        const pnl = minerState.price > minerState.initPrice
-          ? (minerState.price * 80n) / 100n - halfInitPrice
-          : minerState.price - halfInitPrice;
+        const halfInitPrice = slotState.initPrice / 2n;
+        const pnl = slotState.price > slotState.initPrice
+          ? (slotState.price * 80n) / 100n - halfInitPrice
+          : slotState.price - halfInitPrice;
         const pnlEth = Number(formatEther(pnl >= 0n ? pnl : -pnl));
         const pnlUsd = pnlEth * ethUsdPrice;
         const sign = pnl >= 0n ? "+" : "-";
@@ -503,9 +581,9 @@ export default function HomePage() {
     ? (occupantInitialsSource?.slice(-2) ?? "??").toUpperCase()
     : initialsFrom(occupantInitialsSource);
 
-  const donutBalanceDisplay =
-    minerState && minerState.donutBalance !== undefined
-      ? formatTokenAmount(minerState.donutBalance, DONUT_DECIMALS, 2)
+  const pixelBalanceDisplay =
+    minerState && minerState.pixelBalance !== undefined
+      ? formatTokenAmount(minerState.pixelBalance, DONUT_DECIMALS, 2)
       : "—";
   const ethBalanceDisplay =
     minerState && minerState.ethBalance !== undefined
@@ -513,17 +591,17 @@ export default function HomePage() {
       : "—";
 
   const buttonLabel = useMemo(() => {
-    if (!minerState) return "Loading…";
+    if (!slotState) return "Loading…";
     if (glazeResult === "success") return "SUCCESS";
     if (glazeResult === "failure") return "FAILURE";
     if (isWriting || isConfirming) {
-      return "GLAZING…";
+      return "MINING…";
     }
-    return "GLAZE";
-  }, [glazeResult, isConfirming, isWriting, minerState]);
+    return "MINE";
+  }, [glazeResult, isConfirming, isWriting, slotState]);
 
   const isGlazeDisabled =
-    !minerState || isWriting || isConfirming || glazeResult !== null;
+    !slotState || isWriting || isConfirming || glazeResult !== null;
 
   const handleViewKingGlazerProfile = useCallback(() => {
     const fid = neynarUser?.user?.fid;
@@ -564,7 +642,7 @@ export default function HomePage() {
       >
         <div className="flex flex-1 flex-col overflow-hidden">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold tracking-wide">GLAZERY</h1>
+            <h1 className="text-2xl font-bold tracking-wide">GRID</h1>
             {context?.user ? (
               <div className="flex items-center gap-2 rounded-full bg-black px-3 py-1">
                 <Avatar className="h-8 w-8 border border-zinc-800">
@@ -589,13 +667,13 @@ export default function HomePage() {
 
           <Card
             className={cn(
-              "mt-2 border-zinc-800 bg-black transition-shadow",
+              "mt-1 border-zinc-800 bg-black transition-shadow",
               occupantDisplay.isYou &&
-                "border-pink-500 shadow-[inset_0_0_24px_rgba(236,72,153,0.55)] animate-glow",
+                "border-cyan-500 shadow-[inset_0_0_24px_rgba(34,211,238,0.55)] animate-glow",
             )}
           >
-            <CardContent className="flex items-center justify-between gap-3 p-2.5">
-              {/* King Glazer Section */}
+            <CardContent className="flex items-center justify-between gap-3 p-3">
+              {/* Miner Section */}
               <div
                 className={cn(
                   "flex items-center gap-2 min-w-0 flex-1",
@@ -603,80 +681,81 @@ export default function HomePage() {
                 )}
                 onClick={neynarUser?.user?.fid ? handleViewKingGlazerProfile : undefined}
               >
-                <Avatar className="h-8 w-8 flex-shrink-0">
+                <Avatar className="h-10 w-10 flex-shrink-0">
                   <AvatarImage
                     src={occupantDisplay.avatarUrl || undefined}
                     alt={occupantDisplay.primary}
                     className="object-cover"
                   />
-                  <AvatarFallback className="bg-zinc-800 text-white text-xs uppercase">
+                  <AvatarFallback className="bg-zinc-800 text-white text-sm uppercase">
                     {minerState ? (
                       occupantFallbackInitials
                     ) : (
-                      <CircleUserRound className="h-4 w-4" />
+                      <CircleUserRound className="h-5 w-5" />
                     )}
                   </AvatarFallback>
                 </Avatar>
                 <div className="leading-tight text-left min-w-0 flex-1">
-                  <div
-                    className={cn(
-                      "text-[9px] font-bold uppercase tracking-[0.08em]",
-                      occupantDisplay.isYou
-                        ? "text-pink-400"
-                        : "text-gray-400",
-                    )}
-                  >
-                    KING GLAZER
+                  <div className="flex items-center gap-1.5">
+                    <div
+                      className={cn(
+                        "text-[10px] font-bold uppercase tracking-[0.08em]",
+                        occupantDisplay.isYou
+                          ? "text-cyan-400"
+                          : "text-gray-400",
+                      )}
+                    >
+                      MINER
+                    </div>
+                    {/* Multiplier Badge - Next to MINER label */}
+                    <div className="bg-cyan-500 text-black text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none">
+                      ×{slotState ? (Number(slotState.multiplier) / 1e18).toFixed(1) : "1.0"}
+                    </div>
                   </div>
                   <div className="flex items-center gap-1 text-sm text-white truncate">
                     <span className="truncate">{occupantDisplay.primary}</span>
                   </div>
-                  {occupantDisplay.secondary ? (
-                    <div className="text-[10px] text-gray-400 truncate">
-                      {occupantDisplay.secondary}
-                    </div>
-                  ) : null}
                 </div>
               </div>
 
-              {/* Stats Section - Glazed and PNL stacked */}
-              <div className="flex flex-col gap-1.5 flex-shrink-0">
-                {/* Glazed Row */}
-                <div className="flex items-center gap-2">
+              {/* Stats Section - Mined and PNL stacked */}
+              <div className="flex flex-col gap-1 flex-shrink-0">
+                {/* Mined Row */}
+                <div className="flex items-center gap-1.5">
                   <div className="text-[9px] font-bold uppercase tracking-[0.08em] text-gray-400 w-12 text-right">
-                    GLAZED
+                    MINED
                   </div>
                   <div className="text-sm font-semibold text-white">
-                    {glazedDisplay}
+                    {minedDisplay}
                   </div>
                   <div className="text-[10px] text-gray-400">
-                    ${glazedUsdValue}
+                    ${minedUsdValue}
                   </div>
                 </div>
 
                 {/* PNL Row */}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                   <div className="text-[9px] font-bold uppercase tracking-[0.08em] text-gray-400 w-12 text-right">
                     PNL
                   </div>
                   <div className={cn(
                     "text-sm font-semibold",
-                    minerState && (() => {
-                      const halfInitPrice = minerState.initPrice / 2n;
-                      const pnl = minerState.price > minerState.initPrice
-                        ? (minerState.price * 80n) / 100n - halfInitPrice
-                        : minerState.price - halfInitPrice;
+                    slotState && (() => {
+                      const halfInitPrice = slotState.initPrice / 2n;
+                      const pnl = slotState.price > slotState.initPrice
+                        ? (slotState.price * 80n) / 100n - halfInitPrice
+                        : slotState.price - halfInitPrice;
                       return pnl >= 0n;
                     })()
                       ? "text-green-400"
                       : "text-red-400"
                   )}>
-                    {minerState
+                    {slotState
                       ? (() => {
-                          const halfInitPrice = minerState.initPrice / 2n;
-                          const pnl = minerState.price > minerState.initPrice
-                            ? (minerState.price * 80n) / 100n - halfInitPrice
-                            : minerState.price - halfInitPrice;
+                          const halfInitPrice = slotState.initPrice / 2n;
+                          const pnl = slotState.price > slotState.initPrice
+                            ? (slotState.price * 80n) / 100n - halfInitPrice
+                            : slotState.price - halfInitPrice;
                           const sign = pnl >= 0n ? "+" : "-";
                           const absolutePnl = pnl >= 0n ? pnl : -pnl;
                           return `${sign}Ξ${formatEth(absolutePnl, 5)}`;
@@ -691,155 +770,139 @@ export default function HomePage() {
             </CardContent>
           </Card>
 
-          <div className="relative mt-1 overflow-hidden bg-black">
-            <div className="flex animate-scroll whitespace-nowrap py-1 text-sm font-bold text-pink-500">
-              {Array.from({ length: 1000 }).map((_, i) => (
-                <span key={i} className="inline-block px-8">
-                  {minerState?.uri && minerState.uri.trim() !== ""
-                    ? minerState.uri
-                    : "We Glaze The World"}
-                </span>
-              ))}
+          <div className="mt-1.5 flex justify-center">
+            <div
+              className="grid gap-[0.5px] bg-zinc-900 p-[0.5px] rounded w-96"
+              style={{
+                gridTemplateColumns: "repeat(16, 1fr)",
+              }}
+            >
+              {Array.from({ length: 256 }).map((_, index) => {
+                const isOwned = ownedSlotIndices.has(index);
+                const isSelected = index === selectedIndex;
+                const slot = allSlots[index];
+                const pixelColor = isSelected ? selectedColor : (slot?.color || "#3f3f46"); // Show selected color if selected, otherwise slot color
+
+                return (
+                  <div
+                    key={index}
+                    className={cn(
+                      "aspect-square transition-all cursor-pointer",
+                      isSelected && "scale-125 z-10 shadow-2xl",
+                      isOwned && "ring-1 ring-cyan-400"
+                    )}
+                    style={{
+                      backgroundColor: pixelColor,
+                    }}
+                    onClick={() => setSelectedIndex(index)}
+                    title={`Pixel #${index}${isOwned ? " (Owned)" : ""}${isSelected ? " (Selected)" : ""}`}
+                  />
+                );
+              })}
             </div>
           </div>
 
-          <div className="mt-1 -mx-2 w-[calc(100%+1rem)] overflow-hidden">
-            <video
-              className="aspect-[16/9] w-full object-cover"
-              autoPlay
-              loop
-              muted
-              playsInline
-              preload="auto"
-              src="/media/donut-loop.mp4"
-            />
-          </div>
-
-          <div className="mt-2 flex flex-col gap-2 pb-2">
-            <div className="grid grid-cols-2 gap-2">
+          <div className="mt-1.5 flex flex-col gap-1.5 pb-2">
+            <div className="grid grid-cols-2 gap-1.5">
               <Card className="border-zinc-800 bg-black">
-                <CardContent className="grid gap-1.5 p-2.5">
-                  <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-gray-400">
-                    GLAZE RATE
+                <CardContent className="grid gap-0.5 p-2">
+                  <div className="text-[8px] font-bold uppercase tracking-[0.08em] text-gray-400">
+                    MINING RATE
                   </div>
-                  <div className="text-2xl font-semibold text-white">
-                    🍩{glazeRateDisplay}<span className="text-xs text-gray-400">/s</span>
+                  <div className="text-lg font-semibold text-white">
+                    ▪{glazeRateDisplay}<span className="text-[10px] text-gray-400">/s</span>
                   </div>
-                  <div className="text-xs text-gray-400 -mt-1">
+                  <div className="text-[9px] text-gray-400">
                     ${glazeRateUsdValue}/s
                   </div>
                 </CardContent>
               </Card>
 
               <Card className="border-zinc-800 bg-black">
-                <CardContent className="grid gap-1.5 p-2.5">
-                  <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-gray-400">
-                    GLAZE PRICE
+                <CardContent className="grid gap-0.5 p-2">
+                  <div className="text-[8px] font-bold uppercase tracking-[0.08em] text-gray-400">
+                    MINING PRICE
                   </div>
-                  <div className="text-2xl font-semibold text-pink-400">
+                  <div className="text-lg font-semibold text-cyan-400">
                     {glazePriceDisplay}
                   </div>
-                  <div className="text-xs text-gray-400 -mt-1">
-                    $
-                    {minerState
-                      ? (
-                          Number(formatEther(minerState.price)) * ethUsdPrice
-                        ).toFixed(2)
-                      : "0.00"}
+                  <div className="text-[9px] text-gray-400">
+                    ${slotState ? (Number(formatEther(slotState.price)) * ethUsdPrice).toFixed(2) : "0.00"}
                   </div>
                 </CardContent>
               </Card>
             </div>
 
-            <input
-              type="text"
-              value={customMessage}
-              onChange={(e) => setCustomMessage(e.target.value)}
-              placeholder="Add a message (optional)"
-              maxLength={100}
-              className="w-full rounded-lg border border-zinc-800 bg-black px-3 py-2 text-sm font-mono text-white placeholder-gray-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-40"
-              disabled={isGlazeDisabled}
-            />
-
-            <Button
-              className="w-full rounded-2xl bg-pink-500 py-3 text-base font-bold text-black shadow-lg transition-colors hover:bg-pink-400 disabled:cursor-not-allowed disabled:bg-pink-500/40"
-              onClick={handleGlaze}
-              disabled={isGlazeDisabled}
-            >
-              {buttonLabel}
-            </Button>
-          </div>
-
-          <div className="mt-auto px-2 pb-1">
-            <div className="mb-0.5 text-[11px] uppercase tracking-wide text-gray-400">
-              Your Balances
+            <div className="flex gap-1.5 items-center">
+              <div className="grid grid-cols-6 gap-0.5">
+                {COLORS.map((color) => (
+                  <button
+                    key={color}
+                    onClick={() => setSelectedColor(color)}
+                    className={cn(
+                      "w-5 h-5 rounded border transition-colors",
+                      selectedColor === color
+                        ? "border-cyan-400 ring-1 ring-cyan-400"
+                        : "border-zinc-700 hover:border-cyan-400"
+                    )}
+                    style={{backgroundColor: color}}
+                  />
+                ))}
+              </div>
+              <Button
+                className="flex-1 rounded-xl bg-cyan-500 hover:bg-cyan-600 py-2 text-sm font-bold text-black shadow-lg transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+                onClick={handleGlaze}
+                disabled={isGlazeDisabled}
+              >
+                {buttonLabel}
+              </Button>
             </div>
 
-            <div className="flex justify-between">
-              {/* Left Column - Donut Balance & Mined */}
-              <div className="flex flex-col gap-0.5 items-start">
-                <div className="flex items-center gap-1.5 text-[11px] font-semibold">
-                  <span>🍩</span>
-                  <span>{donutBalanceDisplay}</span>
+            {/* Your Stats Section */}
+            <div className="mt-2">
+              <h2 className="text-[10px] font-bold text-cyan-400 mb-1">YOUR STATS</h2>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[10px]">
+                <div className="flex justify-between">
+                  <span className="text-gray-400">ETH:</span>
+                  <span className="text-white font-semibold">Ξ{ethBalanceDisplay}</span>
                 </div>
-                <div className="flex flex-col items-start text-[11px]">
-                  <span className="text-gray-400 mb-0">Mined</span>
-                  <div className="flex items-center gap-1">
-                    <span>🍩</span>
-                    <span className="font-semibold">
-                      {address && accountData?.mined
-                        ? Number(accountData.mined).toLocaleString(undefined, {
-                            maximumFractionDigits: 2,
-                          })
-                        : "0"}
-                    </span>
-                  </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">WETH:</span>
+                  <span className="text-white font-semibold">Ξ{minerState && minerState.wethBalance !== undefined
+                    ? formatEth(minerState.wethBalance, 4)
+                    : "—"}</span>
                 </div>
-              </div>
-
-              {/* Middle Column - ETH Balance & Spent */}
-              <div className="flex flex-col gap-0.5 items-start">
-                <div className="flex items-center gap-1.5 text-[11px] font-semibold">
-                  <span>Ξ</span>
-                  <span>{ethBalanceDisplay}</span>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Spent:</span>
+                  <span className="text-white font-semibold">Ξ{slotState && occupantDisplay.isYou
+                    ? formatEth(slotState.initPrice / 2n, 5)
+                    : "0"}</span>
                 </div>
-                <div className="flex flex-col items-start text-[11px]">
-                  <span className="text-gray-400 mb-0">Spent</span>
-                  <div className="flex items-center gap-1">
-                    <span>Ξ</span>
-                    <span className="font-semibold">
-                      {address && accountData?.spent
-                        ? Number(accountData.spent).toLocaleString(undefined, {
-                            maximumFractionDigits: 4,
-                          })
-                        : "0"}
-                    </span>
-                  </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Earned:</span>
+                  <span className="text-white font-semibold">Ξ{slotState && occupantDisplay.isYou && slotState.price > slotState.initPrice
+                    ? formatEth((slotState.price * 80n) / 100n, 5)
+                    : "0"}</span>
                 </div>
-              </div>
-
-              {/* Right Column - WETH Balance & Earned */}
-              <div className="flex flex-col gap-0.5 items-start">
-                <div className="flex items-center gap-1.5 text-[11px] font-semibold">
-                  <span>wΞ</span>
-                  <span>
-                    {minerState && minerState.wethBalance !== undefined
-                      ? formatEth(minerState.wethBalance, 4)
-                      : "—"}
-                  </span>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Mined:</span>
+                  <span className="text-white font-semibold">▪{slotState && occupantDisplay.isYou && interpolatedMined !== null
+                    ? formatTokenAmount(interpolatedMined, DONUT_DECIMALS, 2)
+                    : "0"}</span>
                 </div>
-                <div className="flex flex-col items-start text-[11px]">
-                  <span className="text-gray-400 mb-0">Earned</span>
-                  <div className="flex items-center gap-1">
-                    <span>wΞ</span>
-                    <span className="font-semibold">
-                      {address && accountData?.earned
-                        ? Number(accountData.earned).toLocaleString(undefined, {
-                            maximumFractionDigits: 4,
-                          })
-                        : "0"}
-                    </span>
-                  </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Rate:</span>
+                  <span className="text-white font-semibold">▪{slotState && occupantDisplay.isYou
+                    ? formatTokenAmount(slotState.pps, DONUT_DECIMALS, 4)
+                    : "0"}/s</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Pixel:</span>
+                  <span className="text-white font-semibold">▪{pixelBalanceDisplay}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Owned:</span>
+                  <span className="text-white font-semibold">{ownedSlotIndices.size}</span>
                 </div>
               </div>
             </div>

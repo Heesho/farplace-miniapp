@@ -111,83 +111,81 @@ export default function AboutPage() {
             </div>
 
             <section>
-              <h2 className="text-lg font-bold text-pink-400 mb-2">
-                What Is $DONUT
+              <h2 className="text-lg font-bold text-cyan-400 mb-2">
+                What Is Pixel Miner
               </h2>
               <ul className="space-y-1 text-sm text-gray-300 list-disc list-inside">
-                <li>$DONUT is a store-of-value token on Base</li>
-                <li>Mined through a continuous Dutch auction instead of proof-of-work or staking</li>
-                <li>Auction revenue increases $DONUT's liquidity and scarcity</li>
+                <li>Pixel Miner is a competitive mining game on Base</li>
+                <li>Mine pixels through a continuous Dutch auction instead of proof-of-work or staking</li>
+                <li>Auction revenue increases liquidity and scarcity</li>
               </ul>
             </section>
 
             <section>
-              <h2 className="text-lg font-bold text-pink-400 mb-2">
+              <h2 className="text-lg font-bold text-cyan-400 mb-2">
                 How Mining Works
               </h2>
               <ul className="space-y-1 text-sm text-gray-300 list-disc list-inside">
-                <li>Only one active miner at a time, called the King Glazer</li>
+                <li>Only one active miner at a time controls the mining operation</li>
                 <li>The right to mine is bought with ETH through a continuous Dutch auction:</li>
                 <li className="pl-6 list-none">- Price doubles after each purchase</li>
                 <li className="pl-6 list-none">- Then decays to 0 over one hour</li>
-                <li className="pl-6 list-none">- Anyone can purchase control of emissions at the current price</li>
+                <li className="pl-6 list-none">- Anyone can purchase control of mining at the current price</li>
               </ul>
             </section>
 
             <section>
-              <h2 className="text-lg font-bold text-pink-400 mb-2">
+              <h2 className="text-lg font-bold text-cyan-400 mb-2">
                 Revenue Split
               </h2>
               <ul className="space-y-1 text-sm text-gray-300 list-disc list-inside">
-                <li>80% → previous King Glazer</li>
-                <li>15% → treasury (Blazery)</li>
+                <li>80% → previous miner</li>
+                <li>15% → treasury</li>
                 <li>5% → provider (frontend host)</li>
               </ul>
             </section>
 
             <section>
-              <h2 className="text-lg font-bold text-pink-400 mb-2">
+              <h2 className="text-lg font-bold text-cyan-400 mb-2">
                 Emission Schedule
               </h2>
               <ul className="space-y-1 text-sm text-gray-300 list-disc list-inside">
-                <li>Starts at 4 DONUT / sec</li>
+                <li>Starts at 4 PIXEL / sec</li>
                 <li>Halving every 30 days</li>
-                <li>Tail emission: 0.01 DONUT / sec (forever)</li>
+                <li>Tail emission: 0.01 PIXEL / sec (forever)</li>
               </ul>
             </section>
 
             <section>
-              <h2 className="text-lg font-bold text-pink-400 mb-2">
+              <h2 className="text-lg font-bold text-cyan-400 mb-2">
                 Proof of Just-In-Time Stake
               </h2>
               <ul className="space-y-1 text-sm text-gray-300 list-disc list-inside">
-                <li>ETH is "staked" only while controlling emissions</li>
+                <li>ETH is "staked" only while controlling mining</li>
                 <li>Profit if the next purchase pays more</li>
                 <li>Lose if it pays less</li>
-                <li>Earn $DONUT the entire time you hold control</li>
+                <li>Earn PIXEL the entire time you hold control</li>
               </ul>
             </section>
 
             <section>
-              <h2 className="text-lg font-bold text-pink-400 mb-2">
+              <h2 className="text-lg font-bold text-cyan-400 mb-2">
                 Treasury
               </h2>
               <ul className="space-y-1 text-sm text-gray-300 list-disc list-inside">
-                <li>Treasury ETH is used to buy and burn DONUT-WETH LP in the Blazery</li>
-                <li>Once sufficient liquidity is established, the Glazery can be upgraded to buy and burn DONUT directly, or governance can decide to acquire other assets or reinvest the treasury</li>
+                <li>Treasury ETH is used to buy and burn PIXEL-WETH LP</li>
+                <li>Once sufficient liquidity is established, the treasury can be upgraded to buy and burn PIXEL directly, or governance can decide to acquire other assets or reinvest the treasury</li>
               </ul>
             </section>
 
             <section className="pb-4">
-              <h2 className="text-lg font-bold text-pink-400 mb-2">
+              <h2 className="text-lg font-bold text-cyan-400 mb-2">
                 Builder Codes
               </h2>
               <ul className="space-y-1 text-sm text-gray-300 list-disc list-inside">
-                <li>Anyone can host their own Donut Shop by deploying a frontend</li>
-                <li>Add your builder code to earn 5% of all purchases made through your shop</li>
-                <li>The protocol will launch with two official Donut Shops:</li>
-                <li className="pl-6 list-none">- GlazeCorp by @heesh</li>
-                <li className="pl-6 list-none">- Pinky Glazer by @bigbroc</li>
+                <li>Anyone can host their own mining frontend by deploying a client</li>
+                <li>Add your builder code to earn 5% of all purchases made through your frontend</li>
+                <li>Compete to become the top mining provider on Base</li>
               </ul>
             </section>
           </div>
