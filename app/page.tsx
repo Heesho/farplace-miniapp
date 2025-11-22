@@ -329,7 +329,7 @@ export default function HomePage() {
     if (!address || !allSlots || allSlots.length === 0) return new Set<number>();
     const owned = new Set<number>();
     allSlots.forEach((slot, index) => {
-      if (slot.miner.toLowerCase() === address.toLowerCase()) {
+      if (slot && slot.miner && slot.miner !== zeroAddress && slot.miner.toLowerCase() === address.toLowerCase()) {
         owned.add(index);
       }
     });
@@ -380,6 +380,37 @@ export default function HomePage() {
   const hasMiner = minerAddress !== zeroAddress;
 
   const claimedHandleParam = (slotState?.color ?? "").trim();
+
+  // Fetch Neynar profile for the connected user
+  const { data: connectedUserProfile } = useQuery<{
+    user: {
+      fid: number | null;
+      username: string | null;
+      displayName: string | null;
+      pfpUrl: string | null;
+    } | null;
+  }>({
+    queryKey: ["neynar-connected-user", address],
+    queryFn: async () => {
+      if (!address) return { user: null };
+      const res = await fetch(
+        `/api/neynar/user?address=${encodeURIComponent(address)}`,
+      );
+      if (!res.ok) {
+        return { user: null };
+      }
+      return (await res.json()) as {
+        user: {
+          fid: number | null;
+          username: string | null;
+          displayName: string | null;
+          pfpUrl: string | null;
+        } | null;
+      };
+    },
+    enabled: !!address,
+    refetchOnWindowFocus: false,
+  });
 
   const { data: neynarUser } = useQuery<{
     user: {
@@ -710,13 +741,21 @@ export default function HomePage() {
   }, [neynarUser?.user?.fid, neynarUser?.user?.username]);
 
   const userDisplayName =
-    context?.user?.displayName ?? context?.user?.username ?? "Farcaster user";
+    context?.user?.displayName ??
+    context?.user?.username ??
+    connectedUserProfile?.user?.displayName ??
+    connectedUserProfile?.user?.username ??
+    (address ? `${address.slice(0, 6)}...${address.slice(-4)}` : "User");
   const userHandle = context?.user?.username
     ? `@${context.user.username}`
-    : context?.user?.fid
-      ? `fid ${context.user.fid}`
-      : "";
-  const userAvatarUrl = context?.user?.pfpUrl ?? null;
+    : connectedUserProfile?.user?.username
+      ? `@${connectedUserProfile.user.username}`
+      : context?.user?.fid
+        ? `fid ${context.user.fid}`
+        : connectedUserProfile?.user?.fid
+          ? `fid ${connectedUserProfile.user.fid}`
+          : "";
+  const userAvatarUrl = context?.user?.pfpUrl ?? connectedUserProfile?.user?.pfpUrl ?? null;
 
   return (
     <main className="flex h-screen w-screen justify-center overflow-hidden bg-black font-mono text-white">
@@ -735,7 +774,7 @@ export default function HomePage() {
             <h1 className="text-xl font-bold tracking-wide">
               GRID
             </h1>
-            {context?.user ? (
+            {(context?.user || connectedUserProfile?.user || address) ? (
               <div className="flex items-center gap-1.5 rounded-full bg-black px-2 py-0.5">
                 <Avatar className="h-6 w-6 border border-zinc-800">
                   <AvatarImage
@@ -820,7 +859,7 @@ export default function HomePage() {
                   <div className="text-[8px] font-bold uppercase tracking-[0.08em] text-gray-400 w-10 text-right">
                     MULT
                   </div>
-                  <div className="text-xs font-semibold text-cyan-400">
+                  <div className="text-xs font-semibold text-white">
                     ×{slotState && slotState.multiplier !== undefined ? Number(formatUnits(slotState.multiplier, 18)).toFixed(1) : "0.0"}
                   </div>
                   {countdownSeconds > 0 && (
@@ -839,7 +878,7 @@ export default function HomePage() {
                     {minedDisplay}
                   </div>
                   <div className="text-[9px] text-gray-400">
-                    ${minedUsdValue}
+                    {minedUsdValue}
                   </div>
                 </div>
 

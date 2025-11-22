@@ -132,7 +132,7 @@ export function WorldMap({
 
   return (
     <div className="relative w-full h-full flex items-center justify-center">
-      <div className="w-full aspect-square grid grid-cols-4 grid-rows-4 gap-2 p-2">
+      <div className="w-full aspect-square grid grid-cols-4 grid-rows-4 gap-1">
         {RISK_REGIONS.slice(0, 16).map((region) => {
           const territory = territories[region.id];
           const isHovered = hoveredIndex === region.id;
@@ -140,28 +140,22 @@ export function WorldMap({
           const isOwned = ownedIndices.has(region.id);
           const hasOwner = territory && territory.miner && territory.miner !== zeroAddress;
 
-          let bgColor = "transparent";
-          if (hasOwner && !isOwned) {
-            bgColor = territory.color && territory.color !== "#3f3f46" && territory.color !== "#2d3748" && territory.color !== ""
-              ? territory.color
-              : "#00ff88";
-          }
+          // All boxes have black background
+          let bgColor = "black";
 
-          let borderColor = "#3f3f46";
+          let borderColor = "#27272a"; // zinc-800 to match cards
           if (isSelected) {
             borderColor = "#ffffff";
           } else if (isOwned) {
-            borderColor = "#06b6d4";
+            borderColor = "#06b6d4"; // cyan-500
           } else if (isHovered) {
             borderColor = "#ffffff";
-          } else if (hasOwner) {
-            borderColor = "#6b7280";
           }
 
           return (
             <div
               key={region.id}
-              className={`w-full h-full rounded border-2 cursor-pointer transition-all relative p-1.5 ${
+              className={`w-full h-full rounded-lg border cursor-pointer transition-all relative p-1.5 ${
                 isOwned ? "shadow-[inset_0_0_24px_rgba(34,211,238,0.55)]" : ""
               }`}
               style={{
