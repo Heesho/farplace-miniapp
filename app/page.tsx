@@ -763,7 +763,7 @@ export default function HomePage() {
       <AddToFarcasterDialog showOnFirstVisit={true} />
 
       <div
-        className="relative flex h-full w-full max-w-[520px] flex-col overflow-y-auto rounded-[28px] bg-black px-1.5 pb-2 shadow-inner"
+        className="relative flex h-full w-full max-w-[520px] flex-col overflow-y-auto rounded-[28px] bg-black px-1.5 pb-2 shadow-inner scrollbar-hide"
         style={{
           paddingTop: "calc(env(safe-area-inset-top, 0px) + 4px)",
           paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 70px)",
