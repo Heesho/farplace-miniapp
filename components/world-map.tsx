@@ -139,20 +139,23 @@ export function WorldMap({
           const territory = territories[region.id];
           const isHovered = hoveredIndex === region.id;
           const isSelected = selectedIndex === region.id;
+          const isOwned = ownedIndices.has(region.id);
           const hasOwner = territory && territory.miner && territory.miner !== zeroAddress;
 
           let bgColor = "transparent";
-          if (hasOwner) {
+          if (hasOwner && !isOwned) {
             bgColor = territory.color && territory.color !== "#3f3f46" && territory.color !== "#2d3748" && territory.color !== ""
               ? territory.color
               : "#00ff88";
           }
 
           let borderColor = "#3f3f46";
-          if (isHovered) {
+          if (isSelected) {
             borderColor = "#ffffff";
-          } else if (isSelected) {
-            borderColor = "#22d3ee";
+          } else if (isOwned) {
+            borderColor = "#06b6d4";
+          } else if (isHovered) {
+            borderColor = "#ffffff";
           } else if (hasOwner) {
             borderColor = "#6b7280";
           }
@@ -160,7 +163,9 @@ export function WorldMap({
           return (
             <div
               key={region.id}
-              className="w-full h-full rounded border-2 cursor-pointer transition-all relative p-1.5"
+              className={`w-full h-full rounded border-2 cursor-pointer transition-all relative p-1.5 ${
+                isOwned ? "shadow-[inset_0_0_24px_rgba(34,211,238,0.55)]" : ""
+              }`}
               style={{
                 backgroundColor: bgColor,
                 borderColor: borderColor,
@@ -170,7 +175,9 @@ export function WorldMap({
               onClick={() => handleClick(region.id)}
             >
               {/* Top-left: Box number */}
-              <div className="absolute top-1.5 left-1.5 text-[10px] text-gray-400 font-medium">
+              <div className={`absolute top-1.5 left-1.5 text-[10px] font-medium ${
+                isOwned ? "text-cyan-400" : "text-gray-400"
+              }`}>
                 #{region.id + 1}
               </div>
 
