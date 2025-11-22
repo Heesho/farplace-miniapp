@@ -25,6 +25,7 @@ import { useAccountData } from "@/hooks/useAccountData";
 import { NavBar } from "@/components/nav-bar";
 import { AddToFarcasterDialog } from "@/components/add-to-farcaster-dialog";
 import { WorldMap } from "@/components/world-map";
+import { ColorPicker } from "@/components/color-picker";
 
 type MiniAppContext = {
   user?: {
@@ -158,6 +159,7 @@ export default function HomePage() {
   const [selectedIndex, setSelectedIndex] = useState<number>(0);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [territoryOwnerPfps, setTerritoryOwnerPfps] = useState<Map<number, string>>(new Map());
+  const [selectedColor, setSelectedColor] = useState<string>("#FF6B6B");
   const glazeResultTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
@@ -271,12 +273,12 @@ export default function HomePage() {
     return rawMinerState as unknown as MinerState;
   }, [rawMinerState]);
 
-  // Fetch all slots (0-41) - 42 territories like Risk board game
+  // Fetch all slots (0-255) - 256 pixels in 16x16 grid
   const { data: rawAllSlots, refetch: refetchAllSlots } = useReadContract({
     address: CONTRACT_ADDRESSES.multicall,
     abi: MULTICALL_ABI,
     functionName: "getSlots",
-    args: [BigInt(0), BigInt(41)],
+    args: [BigInt(0), BigInt(255)],
     chainId: base.id,
     query: {
       refetchInterval: 8_000, // Refresh every 8 seconds
@@ -541,9 +543,6 @@ export default function HomePage() {
         chainId: base.id,
       }) as bigint;
 
-      // Get the player's auto-assigned color
-      const playerColor = getPlayerColor(targetAddress);
-
       await writeContract({
         account: targetAddress as Address,
         address: CONTRACT_ADDRESSES.multicall as Address,
@@ -555,7 +554,7 @@ export default function HomePage() {
           epochId,
           deadline,
           maxPrice,
-          playerColor,
+          selectedColor,
         ],
         value: price + entropyFee,
         chainId: base.id,
@@ -819,7 +818,7 @@ export default function HomePage() {
       <AddToFarcasterDialog showOnFirstVisit={true} />
 
       <div
-        className="relative flex h-full w-full max-w-[520px] flex-col overflow-y-auto rounded-[28px] bg-black px-1.5 pb-2 shadow-inner scrollbar-hide"
+        className="relative flex h-full w-full max-w-[520px] flex-col overflow-hidden rounded-[28px] bg-black px-1.5 shadow-inner"
         style={{
           paddingTop: "calc(env(safe-area-inset-top, 0px) + 4px)",
           paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 70px)",
@@ -987,7 +986,7 @@ export default function HomePage() {
             />
           </div>
 
-          <div className="flex flex-col gap-1 pb-1">
+          <div className="flex flex-col gap-1">
             <div className="grid grid-cols-2 gap-1">
               <Card className="border-zinc-800 bg-black">
                 <CardContent className="grid gap-0.5 p-1.5">
@@ -1018,13 +1017,24 @@ export default function HomePage() {
               </Card>
             </div>
 
-            <Button
-              className="w-full rounded-xl bg-cyan-500 hover:bg-cyan-600 py-1.5 text-xs font-bold text-black shadow-lg transition-colors disabled:cursor-not-allowed disabled:opacity-40"
-              onClick={handleGlaze}
-              disabled={isGlazeDisabled}
-            >
-              {buttonLabel === "MINE" ? "CONQUER" : buttonLabel === "MINING…" ? "CONQUERING…" : buttonLabel}
-            </Button>
+            <div className="flex gap-1 items-center justify-center">
+              <div className="flex-1 flex items-center gap-1.5 bg-zinc-900 border border-zinc-800 rounded-xl px-2 py-1.5">
+                <div className="text-[8px] font-bold uppercase tracking-[0.08em] text-gray-400 whitespace-nowrap">
+                  COLOR
+                </div>
+                <ColorPicker
+                  selectedColor={selectedColor}
+                  onColorSelect={setSelectedColor}
+                />
+              </div>
+              <Button
+                className="flex-1 rounded-xl bg-cyan-500 hover:bg-cyan-600 py-1.5 text-xs font-bold text-black shadow-lg transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+                onClick={handleGlaze}
+                disabled={isGlazeDisabled}
+              >
+                {buttonLabel === "MINE" ? "PLACE" : buttonLabel === "MINING…" ? "PLACING…" : buttonLabel}
+              </Button>
+            </div>
           </div>
         </div>
       </div>

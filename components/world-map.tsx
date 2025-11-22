@@ -4,50 +4,8 @@ import { useState, useEffect } from "react";
 import { zeroAddress } from "viem";
 import { formatEther, formatUnits } from "viem";
 
-const RISK_REGIONS = [
-  { id: 0, name: "Alaska" },
-  { id: 1, name: "Northwest Territory" },
-  { id: 2, name: "Greenland" },
-  { id: 3, name: "Alberta" },
-  { id: 4, name: "Ontario" },
-  { id: 5, name: "Quebec" },
-  { id: 6, name: "Western United States" },
-  { id: 7, name: "Eastern United States" },
-  { id: 8, name: "Central America" },
-  { id: 9, name: "Venezuela" },
-  { id: 10, name: "Peru" },
-  { id: 11, name: "Brazil" },
-  { id: 12, name: "Argentina" },
-  { id: 13, name: "Iceland" },
-  { id: 14, name: "Great Britain" },
-  { id: 15, name: "Scandinavia" },
-  { id: 16, name: "Northern Europe" },
-  { id: 17, name: "Western Europe" },
-  { id: 18, name: "Southern Europe" },
-  { id: 19, name: "Ukraine" },
-  { id: 20, name: "North Africa" },
-  { id: 21, name: "Egypt" },
-  { id: 22, name: "East Africa" },
-  { id: 23, name: "Congo" },
-  { id: 24, name: "South Africa" },
-  { id: 25, name: "Madagascar" },
-  { id: 26, name: "Ural" },
-  { id: 27, name: "Siberia" },
-  { id: 28, name: "Yakutsk" },
-  { id: 29, name: "Kamchatka" },
-  { id: 30, name: "Irkutsk" },
-  { id: 31, name: "Mongolia" },
-  { id: 32, name: "Japan" },
-  { id: 33, name: "Afghanistan" },
-  { id: 34, name: "China" },
-  { id: 35, name: "Middle East" },
-  { id: 36, name: "India" },
-  { id: 37, name: "Siam" },
-  { id: 38, name: "Indonesia" },
-  { id: 39, name: "New Guinea" },
-  { id: 40, name: "Western Australia" },
-  { id: 41, name: "Eastern Australia" },
-];
+// Generate 256 pixels for 16x16 grid
+const PIXELS = Array.from({ length: 256 }, (_, i) => ({ id: i }));
 
 type SlotState = {
   epochId: bigint;
@@ -136,66 +94,53 @@ export function WorldMap({
   };
 
   return (
-    <div className="relative w-full h-full flex items-center justify-center">
-      <div className="w-full aspect-square grid grid-cols-4 grid-rows-4 gap-1">
-        {RISK_REGIONS.slice(0, 16).map((region) => {
-          const territory = territories[region.id];
-          const isHovered = hoveredIndex === region.id;
-          const isSelected = selectedIndex === region.id;
-          const isOwned = ownedIndices.has(region.id);
+    <div className="relative w-full h-full flex items-center justify-center rounded-lg overflow-hidden">
+      <div className="w-full aspect-square grid grid-cols-16">
+        {PIXELS.map((pixel) => {
+          const territory = territories[pixel.id];
+          const isHovered = hoveredIndex === pixel.id;
+          const isSelected = selectedIndex === pixel.id;
+          const isOwned = ownedIndices.has(pixel.id);
           const hasOwner = territory && territory.miner && territory.miner !== zeroAddress;
-          const isPriceJumping = animatingSlots?.priceJump.has(region.id) ?? false;
-          const isMultiplierChanging = animatingSlots?.multiplierChange.has(region.id) ?? false;
+          const isPriceJumping = animatingSlots?.priceJump.has(pixel.id) ?? false;
+          const isMultiplierChanging = animatingSlots?.multiplierChange.has(pixel.id) ?? false;
 
-          // All boxes have black background
-          let bgColor = "black";
-
-          let borderColor = "#27272a"; // zinc-800 to match cards
-          if (isSelected) {
-            borderColor = "#ffffff";
-          } else if (isOwned) {
-            borderColor = "#06b6d4"; // cyan-500
-          } else if (isHovered) {
-            borderColor = "#ffffff";
+          // Use the pixel's color if it has been mined, otherwise dark gray
+          let bgColor = "#1a1a1a";
+          if (hasOwner && territory.color && /^#[0-9A-F]{6}$/i.test(territory.color)) {
+            bgColor = territory.color;
           }
 
           return (
-            <div
-              key={region.id}
-              className={`w-full h-full rounded-lg border cursor-pointer transition-all relative p-1.5 ${
-                isOwned ? "shadow-[inset_0_0_24px_rgba(34,211,238,0.55)]" : ""
-              } ${isPriceJumping ? "animate-box-price-jump" : ""} ${isMultiplierChanging ? "animate-multiplier-change" : ""}`}
+            <button
+              key={pixel.id}
+              className={`aspect-square relative ${
+                isPriceJumping ? "animate-box-price-jump" : ""
+              } ${isMultiplierChanging ? "animate-multiplier-change" : ""}`}
               style={{
                 backgroundColor: bgColor,
-                borderColor: borderColor,
               }}
-              onMouseEnter={() => handleMouseEnter(region.id)}
+              onMouseEnter={() => handleMouseEnter(pixel.id)}
               onMouseLeave={handleMouseLeave}
-              onClick={() => handleClick(region.id)}
+              onClick={() => handleClick(pixel.id)}
+              title={`Pixel #${pixel.id}`}
             >
-              {/* Top-left: Box number */}
-              <div className={`absolute top-1.5 left-1.5 text-[10px] font-medium ${
-                isOwned ? "text-cyan-400" : "text-gray-400"
-              }`}>
-                #{region.id + 1}
-              </div>
-
-              {/* Top-right: Multiplier */}
-              {territory && (
-                <div className="absolute top-1.5 right-1.5 text-[10px] text-gray-400">
-                  {formatMultiplier(territory.multiplier)}
-                </div>
+              {isOwned && (
+                <div className="absolute inset-0 bg-cyan-400/10" />
               )}
-
-              {/* Bottom-right: Price */}
-              {territory && (
-                <div className={`absolute bottom-1.5 right-1.5 text-white text-[12px] font-semibold ${
-                  isPriceJumping ? "animate-price-jump" : ""
-                }`}>
-                  {formatPrice(territory.price)}
-                </div>
+              {isSelected && (
+                <>
+                  {/* Top-left corner */}
+                  <div className="absolute top-0 left-0 w-[25%] h-[25%] border-t-2 border-l-2 border-white" />
+                  {/* Top-right corner */}
+                  <div className="absolute top-0 right-0 w-[25%] h-[25%] border-t-2 border-r-2 border-white" />
+                  {/* Bottom-left corner */}
+                  <div className="absolute bottom-0 left-0 w-[25%] h-[25%] border-b-2 border-l-2 border-white" />
+                  {/* Bottom-right corner */}
+                  <div className="absolute bottom-0 right-0 w-[25%] h-[25%] border-b-2 border-r-2 border-white" />
+                </>
               )}
-            </div>
+            </button>
           );
         })}
       </div>
@@ -203,4 +148,4 @@ export function WorldMap({
   );
 }
 
-export { RISK_REGIONS };
+export { PIXELS };
