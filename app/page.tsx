@@ -25,7 +25,7 @@ import { useAccountData } from "@/hooks/useAccountData";
 import { NavBar } from "@/components/nav-bar";
 import { AddToFarcasterDialog } from "@/components/add-to-farcaster-dialog";
 import { WorldMap } from "@/components/world-map";
-import { ColorPicker } from "@/components/color-picker";
+import { TilePlacer } from "@/components/tile-placer";
 
 type MiniAppContext = {
   user?: {
@@ -159,7 +159,7 @@ export default function HomePage() {
   const [selectedIndex, setSelectedIndex] = useState<number>(0);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [territoryOwnerPfps, setTerritoryOwnerPfps] = useState<Map<number, string>>(new Map());
-  const [selectedColor, setSelectedColor] = useState<string>("#FF6B6B");
+  const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const glazeResultTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
@@ -501,7 +501,7 @@ export default function HomePage() {
   });
 
   const handleGlaze = useCallback(async () => {
-    if (!slotState) return;
+    if (!slotState || !selectedColor) return;
     resetGlazeResult();
     try {
       let targetAddress = address;
@@ -569,6 +569,7 @@ export default function HomePage() {
     connectAsync,
     selectedIndex,
     slotState,
+    selectedColor,
     primaryConnector,
     resetGlazeResult,
     resetWrite,
@@ -780,7 +781,7 @@ export default function HomePage() {
   }, [glazeResult, isConfirming, isWriting, slotState]);
 
   const isGlazeDisabled =
-    !slotState || isWriting || isConfirming || glazeResult !== null;
+    !slotState || !selectedColor || isWriting || isConfirming || glazeResult !== null;
 
   const handleViewKingGlazerProfile = useCallback(() => {
     const fid = neynarUser?.user?.fid;
@@ -855,7 +856,7 @@ export default function HomePage() {
             className={cn(
               "border-zinc-800 bg-black transition-shadow",
               occupantDisplay.isYou &&
-                "border-cyan-500 shadow-[inset_0_0_24px_rgba(34,211,238,0.55)] animate-glow",
+                "border-white shadow-[inset_0_0_24px_rgba(255,255,255,0.15)] animate-glow",
             )}
           >
             <CardContent className="flex items-center justify-between gap-2 p-2">
@@ -887,7 +888,7 @@ export default function HomePage() {
                       className={cn(
                         "text-[9px] font-bold uppercase tracking-[0.08em]",
                         occupantDisplay.isYou
-                          ? "text-cyan-400"
+                          ? "text-white"
                           : "text-gray-400",
                       )}
                     >
@@ -983,18 +984,21 @@ export default function HomePage() {
               ownedIndices={ownedSlotIndices}
               territoryOwnerPfps={territoryOwnerPfps}
               animatingSlots={animatingSlots}
+              previewColor={selectedColor}
             />
           </div>
 
           <div className="flex flex-col gap-1">
             <div className="grid grid-cols-2 gap-1">
               <Card className="border-zinc-800 bg-black">
-                <CardContent className="grid gap-0.5 p-1.5">
-                  <div className="text-[7px] font-bold uppercase tracking-[0.08em] text-gray-400">
-                    MINING RATE
-                  </div>
-                  <div className="text-base font-semibold text-white">
-                    ▪{glazeRateDisplay}<span className="text-[9px] text-gray-400">/s</span>
+                <CardContent className="flex items-center justify-between p-1.5">
+                  <div>
+                    <div className="text-[7px] font-bold uppercase tracking-[0.08em] text-gray-400">
+                      MINING RATE
+                    </div>
+                    <div className="text-sm font-semibold text-white">
+                      ▪{glazeRateDisplay}<span className="text-[8px] text-gray-400">/s</span>
+                    </div>
                   </div>
                   <div className="text-[8px] text-gray-400">
                     ${glazeRateUsdValue}/s
@@ -1003,12 +1007,14 @@ export default function HomePage() {
               </Card>
 
               <Card className="border-zinc-800 bg-black">
-                <CardContent className="grid gap-0.5 p-1.5">
-                  <div className="text-[7px] font-bold uppercase tracking-[0.08em] text-gray-400">
-                    MINING PRICE
-                  </div>
-                  <div className="text-base font-semibold text-cyan-400">
-                    {glazePriceDisplay}
+                <CardContent className="flex items-center justify-between p-1.5">
+                  <div>
+                    <div className="text-[7px] font-bold uppercase tracking-[0.08em] text-gray-400">
+                      MINING PRICE
+                    </div>
+                    <div className="text-sm font-semibold text-white">
+                      {glazePriceDisplay}
+                    </div>
                   </div>
                   <div className="text-[8px] text-gray-400">
                     ${slotState ? (Number(formatEther(slotState.price)) * ethUsdPrice).toFixed(2) : "0.00"}
@@ -1017,24 +1023,14 @@ export default function HomePage() {
               </Card>
             </div>
 
-            <div className="flex gap-1 items-center justify-center">
-              <div className="flex-1 flex items-center gap-1.5 bg-zinc-900 border border-zinc-800 rounded-xl px-2 py-1.5">
-                <div className="text-[8px] font-bold uppercase tracking-[0.08em] text-gray-400 whitespace-nowrap">
-                  COLOR
-                </div>
-                <ColorPicker
-                  selectedColor={selectedColor}
-                  onColorSelect={setSelectedColor}
-                />
-              </div>
-              <Button
-                className="flex-1 rounded-xl bg-cyan-500 hover:bg-cyan-600 py-1.5 text-xs font-bold text-black shadow-lg transition-colors disabled:cursor-not-allowed disabled:opacity-40"
-                onClick={handleGlaze}
-                disabled={isGlazeDisabled}
-              >
-                {buttonLabel === "MINE" ? "PLACE" : buttonLabel === "MINING…" ? "PLACING…" : buttonLabel}
-              </Button>
-            </div>
+            <TilePlacer
+              selectedColor={selectedColor}
+              onColorSelect={setSelectedColor}
+              onClearColor={() => setSelectedColor(null)}
+              onPlace={handleGlaze}
+              disabled={!slotState || isWriting || isConfirming || glazeResult !== null}
+              isPlacing={isWriting || isConfirming}
+            />
           </div>
         </div>
       </div>

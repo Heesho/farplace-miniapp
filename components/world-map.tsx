@@ -31,6 +31,7 @@ type WorldMapProps = {
     priceJump: Set<number>;
     multiplierChange: Set<number>;
   };
+  previewColor?: string | null;
 };
 
 export function WorldMap({
@@ -40,6 +41,7 @@ export function WorldMap({
   territories,
   ownedIndices,
   animatingSlots,
+  previewColor,
 }: WorldMapProps) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [currentTime, setCurrentTime] = useState(Date.now());
@@ -94,7 +96,7 @@ export function WorldMap({
   };
 
   return (
-    <div className="relative w-full h-full flex items-center justify-center rounded-lg overflow-hidden">
+    <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
       <div className="w-full aspect-square grid grid-cols-16">
         {PIXELS.map((pixel) => {
           const territory = territories[pixel.id];
@@ -111,24 +113,30 @@ export function WorldMap({
             bgColor = territory.color;
           }
 
+          // Show preview color if this pixel is selected and a color is chosen
+          const showPreview = isSelected && previewColor;
+          const displayColor = showPreview ? previewColor : bgColor;
+
           return (
             <button
               key={pixel.id}
               className={`aspect-square relative ${
                 isPriceJumping ? "animate-box-price-jump" : ""
-              } ${isMultiplierChanging ? "animate-multiplier-change" : ""}`}
+              } ${isMultiplierChanging ? "animate-multiplier-change" : ""} ${
+                showPreview ? "ring-2 ring-white z-10" : ""
+              }`}
               style={{
-                backgroundColor: bgColor,
+                backgroundColor: displayColor,
               }}
               onMouseEnter={() => handleMouseEnter(pixel.id)}
               onMouseLeave={handleMouseLeave}
               onClick={() => handleClick(pixel.id)}
               title={`Pixel #${pixel.id}`}
             >
-              {isOwned && (
-                <div className="absolute inset-0 bg-cyan-400/10" />
+              {isOwned && !showPreview && (
+                <div className="absolute inset-0 bg-white/10" />
               )}
-              {isSelected && (
+              {isSelected && !previewColor && (
                 <>
                   {/* Top-left corner */}
                   <div className="absolute top-0 left-0 w-[25%] h-[25%] border-t-2 border-l-2 border-white" />

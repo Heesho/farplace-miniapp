@@ -89,58 +89,37 @@ body {
 @keyframes box-price-jump {
   0% {
     transform: scale(1);
+    filter: brightness(1);
   }
-  15% {
-    transform: scale(1.06);
-  }
-  30% {
-    transform: scale(1.04);
-  }
-  45% {
-    transform: scale(1.06);
-  }
-  60% {
-    transform: scale(1.03);
-  }
-  80% {
-    transform: scale(1.01);
+  50% {
+    transform: scale(1.15);
+    filter: brightness(1.5);
   }
   100% {
     transform: scale(1);
+    filter: brightness(1);
   }
 }
 
 .animate-box-price-jump {
-  animation: box-price-jump 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: box-price-jump 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+  z-index: 20;
 }
 
 @keyframes multiplier-change {
-  0% {
-    transform: scale(1) rotate(0deg);
+  0%, 100% {
+    transform: scale(1);
+    filter: brightness(1) hue-rotate(0deg);
   }
-  15% {
-    transform: scale(1.1) rotate(180deg);
-  }
-  30% {
-    transform: scale(1.2) rotate(360deg);
-  }
-  45% {
-    transform: scale(1.15) rotate(540deg);
-  }
-  60% {
-    transform: scale(1.25) rotate(720deg);
-  }
-  75% {
-    transform: scale(1.1) rotate(900deg);
-  }
-  85% {
-    transform: scale(1.05) rotate(1080deg);
-  }
-  100% {
-    transform: scale(1) rotate(1080deg);
+  50% {
+    transform: scale(1.15);
+    filter: brightness(1.5) hue-rotate(180deg);
   }
 }
 
 .animate-multiplier-change {
-  animation: multiplier-change 1.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  animation: multiplier-change 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+  z-index: 20;
 }
