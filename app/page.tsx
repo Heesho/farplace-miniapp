@@ -776,8 +776,12 @@ export default function HomePage() {
     neynarUser?.user,
   ]);
 
-  const glazeRateDisplay = slotState
-    ? formatTokenAmount(slotState.ups, CORE_DECIMALS, 4)
+  // Use slot ups if available and > 0, otherwise fall back to base rig ups
+  const displayUps = slotState && slotState.ups > 0n
+    ? slotState.ups
+    : (rigState?.ups ?? 0n);
+  const glazeRateDisplay = displayUps > 0n
+    ? formatTokenAmount(displayUps, CORE_DECIMALS, 4)
     : "—";
   const glazePriceDisplay = slotState
     ? `Ξ${formatEth(slotState.price, slotState.price === 0n ? 0 : 5)}`
@@ -791,8 +795,8 @@ export default function HomePage() {
     ? (Number(formatEther(interpolatedMined)) * Number(formatEther(rigState.unitPrice)) * ethUsdPrice).toFixed(2)
     : "0.00";
 
-  const glazeRateUsdValue = rigState && slotState && rigState.unitPrice > 0n
-    ? (Number(formatUnits(slotState.ups, CORE_DECIMALS)) * Number(formatEther(rigState.unitPrice)) * ethUsdPrice).toFixed(4)
+  const glazeRateUsdValue = rigState && rigState.unitPrice > 0n && displayUps > 0n
+    ? (Number(formatUnits(displayUps, CORE_DECIMALS)) * Number(formatEther(rigState.unitPrice)) * ethUsdPrice).toFixed(4)
     : "0.0000";
 
   // Calculate PNL: currentPrice * 0.8 - initPrice / 2
