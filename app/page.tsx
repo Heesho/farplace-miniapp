@@ -777,13 +777,14 @@ export default function HomePage() {
   ]);
 
   // Use slot ups if available and > 0, otherwise fall back to base rig ups divided by capacity (256 slots)
+  // INITIAL_UPS from contract is 2 ether (2e18) as fallback if rigState not loaded
   const CAPACITY = 256n;
+  const INITIAL_UPS = 2000000000000000000n; // 2 ether in wei
+  const baseUps = rigState?.ups && rigState.ups > 0n ? rigState.ups : INITIAL_UPS;
   const displayUps = slotState && slotState.ups > 0n
     ? slotState.ups
-    : ((rigState?.ups ?? 0n) / CAPACITY);
-  const glazeRateDisplay = displayUps > 0n
-    ? formatTokenAmount(displayUps, CORE_DECIMALS, 4)
-    : "—";
+    : (baseUps / CAPACITY);
+  const glazeRateDisplay = formatTokenAmount(displayUps, CORE_DECIMALS, 4);
   const glazePriceDisplay = slotState
     ? `Ξ${formatEth(slotState.price, slotState.price === 0n ? 0 : 5)}`
     : "Ξ—";
@@ -796,7 +797,7 @@ export default function HomePage() {
     ? (Number(formatEther(interpolatedMined)) * Number(formatEther(rigState.unitPrice)) * ethUsdPrice).toFixed(2)
     : "0.00";
 
-  const glazeRateUsdValue = rigState && rigState.unitPrice > 0n && displayUps > 0n
+  const glazeRateUsdValue = rigState && rigState.unitPrice > 0n
     ? (Number(formatUnits(displayUps, CORE_DECIMALS)) * Number(formatEther(rigState.unitPrice)) * ethUsdPrice).toFixed(4)
     : "0.0000";
 
