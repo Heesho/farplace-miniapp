@@ -449,13 +449,13 @@ export default function BlazeryPage() {
                   className="object-cover"
                 />
                 <AvatarFallback className="bg-zinc-700 text-white text-xs font-bold">
-                  {initialsFrom(userDisplayName)}
+                  {address ? initialsFrom(userDisplayName) : "..."}
                 </AvatarFallback>
               </Avatar>
-              <div className="leading-tight text-right">
+              <div className="leading-tight">
                 <div className="text-base font-bold text-white">{userDisplayName}</div>
                 {userHandle ? (
-                  <div className="text-xs text-zinc-400">{userHandle}</div>
+                  <div className="text-[10px] text-zinc-400">{userHandle}</div>
                 ) : null}
               </div>
             </div>
