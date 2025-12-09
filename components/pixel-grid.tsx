@@ -13,7 +13,7 @@ type SlotState = {
   multiplier: bigint;
   multiplierTime: bigint;
   mined: bigint;
-  miner: Address;
+  rig: Address;
   uri: string;
 };
 
@@ -48,8 +48,8 @@ export function PixelGrid({ slots, selectedIndex, onSelectPixel, userAddress }: 
   }, []);
 
   const isOwnedByUser = useCallback((slot: SlotState) => {
-    if (!userAddress || slot.miner === zeroAddress) return false;
-    return slot.miner.toLowerCase() === userAddress.toLowerCase();
+    if (!userAddress || slot.rig === zeroAddress) return false;
+    return slot.rig.toLowerCase() === userAddress.toLowerCase();
   }, [userAddress]);
 
   return (
@@ -133,11 +133,11 @@ export function PixelGrid({ slots, selectedIndex, onSelectPixel, userAddress }: 
             </div>
           </div>
 
-          {slots[selectedIndex].miner !== zeroAddress && (
+          {slots[selectedIndex].rig !== zeroAddress && (
             <div className="mt-2 pt-2 border-t border-zinc-800">
               <div className="text-gray-400 text-xs">Owner</div>
               <div className="font-mono text-xs text-white truncate">
-                {slots[selectedIndex].miner.slice(0, 10)}...{slots[selectedIndex].miner.slice(-8)}
+                {slots[selectedIndex].rig.slice(0, 10)}...{slots[selectedIndex].rig.slice(-8)}
               </div>
             </div>
           )}

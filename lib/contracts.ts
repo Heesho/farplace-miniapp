@@ -1,9 +1,9 @@
 export const CONTRACT_ADDRESSES = {
-  unit: "0x9AA530224eA747388e8d35bf6904C1a81004244c",
-  miner: "0xcD56904138618a457e6709A7CB5F11C7D1f49A94",
-  multicall: "0x5833A6543e4455079F098DE7746518A33Ab1Addf",
+  unit: "0xd979550379833ab83148903BDDa582C972271fFD",
+  rig: "0x368E56f41DcbD8CfFcE5618F8DE74e8CB135d721",
+  multicall: "0x5417d71D359445355fb98D8a58eeA4FEA1Dc872e",
   weth: "0x4200000000000000000000000000000000000006",
-  provider: "0xba366c82815983ff130c23ced78bd95e1f2c18ea",
+  faction: "0x0000000000000000000000000000000000000000",
 } as const;
 
 export const MULTICALL_ABI = [
@@ -11,7 +11,7 @@ export const MULTICALL_ABI = [
     inputs: [
       {
         internalType: "address",
-        name: "provider",
+        name: "faction",
         type: "address",
       },
       {
@@ -53,7 +53,7 @@ export const MULTICALL_ABI = [
         type: "address",
       },
     ],
-    name: "getMiner",
+    name: "getRig",
     outputs: [
       {
         components: [
@@ -83,7 +83,7 @@ export const MULTICALL_ABI = [
             type: "uint256",
           },
         ],
-        internalType: "struct Multicall.MinerState",
+        internalType: "struct Multicall.RigState",
         name: "state",
         type: "tuple",
       },
@@ -145,7 +145,7 @@ export const MULTICALL_ABI = [
           },
           {
             internalType: "address",
-            name: "miner",
+            name: "rig",
             type: "address",
           },
           {
@@ -221,7 +221,7 @@ export const MULTICALL_ABI = [
           },
           {
             internalType: "address",
-            name: "miner",
+            name: "rig",
             type: "address",
           },
           {

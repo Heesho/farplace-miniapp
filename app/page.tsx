@@ -38,7 +38,7 @@ type MiniAppContext = {
   };
 };
 
-type MinerState = {
+type RigState = {
   ups: bigint;
   unitPrice: bigint;
   unitBalance: bigint;
@@ -55,7 +55,7 @@ type SlotState = {
   multiplier: bigint;
   multiplierTime: bigint;
   mined: bigint;
-  miner: Address;
+  rig: Address;
   uri: string;
 };
 
@@ -298,10 +298,10 @@ export default function HomePage() {
     return () => clearInterval(interval);
   }, []);
 
-  const { data: rawMinerState, refetch: refetchMinerState } = useReadContract({
+  const { data: rawRigState, refetch: refetchRigState } = useReadContract({
     address: CONTRACT_ADDRESSES.multicall,
     abi: MULTICALL_ABI,
-    functionName: "getMiner",
+    functionName: "getRig",
     args: [address ?? zeroAddress],
     chainId: base.id,
     query: {
@@ -309,10 +309,10 @@ export default function HomePage() {
     },
   });
 
-  const minerState = useMemo(() => {
-    if (!rawMinerState) return undefined;
-    return rawMinerState as unknown as MinerState;
-  }, [rawMinerState]);
+  const rigState = useMemo(() => {
+    if (!rawRigState) return undefined;
+    return rawRigState as unknown as RigState;
+  }, [rawRigState]);
 
   // Fetch all slots (0-255) - 256 pixels in 16x16 grid
   const { data: rawAllSlots, refetch: refetchAllSlots } = useReadContract({
@@ -417,7 +417,7 @@ export default function HomePage() {
     if (!address || !allSlots || allSlots.length === 0) return new Set<number>();
     const owned = new Set<number>();
     allSlots.forEach((slot, index) => {
-      if (slot && slot.miner && slot.miner !== zeroAddress && slot.miner.toLowerCase() === address.toLowerCase()) {
+      if (slot && slot.rig && slot.rig !== zeroAddress && slot.rig.toLowerCase() === address.toLowerCase()) {
         owned.add(index);
       }
     });
@@ -427,11 +427,11 @@ export default function HomePage() {
   const { data: accountData } = useAccountData(address);
 
   useEffect(() => {
-    if (!readyRef.current && minerState) {
+    if (!readyRef.current && rigState) {
       readyRef.current = true;
       sdk.actions.ready().catch(() => {});
     }
-  }, [minerState]);
+  }, [rigState]);
 
   const {
     data: txHash,
@@ -458,7 +458,7 @@ export default function HomePage() {
       // For the placer, just clear the color - no animation needed since they saw the preview
       // Animation is for OTHER users who will see it when their contract data updates
       setSelectedColor(null);
-      refetchMinerState();
+      refetchRigState();
       refetchAllSlots();
       const resetTimer = setTimeout(() => {
         resetWrite();
@@ -466,10 +466,10 @@ export default function HomePage() {
       return () => clearTimeout(resetTimer);
     }
     return;
-  }, [receipt, refetchMinerState, refetchAllSlots, resetWrite, showGlazeResult, selectedIndex, selectedColor]);
+  }, [receipt, refetchRigState, refetchAllSlots, resetWrite, showGlazeResult, selectedIndex, selectedColor]);
 
-  const minerAddress = slotState?.miner ?? zeroAddress;
-  const hasMiner = minerAddress !== zeroAddress;
+  const rigAddress = slotState?.rig ?? zeroAddress;
+  const hasRig = rigAddress !== zeroAddress;
 
   const claimedHandleParam = (slotState?.uri ?? "").trim();
 
@@ -512,10 +512,10 @@ export default function HomePage() {
       pfpUrl: string | null;
     } | null;
   }>({
-    queryKey: ["neynar-user", minerAddress],
+    queryKey: ["neynar-user", rigAddress],
     queryFn: async () => {
       const res = await fetch(
-        `/api/neynar/user?address=${encodeURIComponent(minerAddress)}`,
+        `/api/neynar/user?address=${encodeURIComponent(rigAddress)}`,
       );
       if (!res.ok) {
         throw new Error("Failed to load Farcaster profile.");
@@ -529,7 +529,7 @@ export default function HomePage() {
         } | null;
       };
     },
-    enabled: hasMiner,
+    enabled: hasRig,
     staleTime: 60_000,
     retry: false,
   });
@@ -583,7 +583,7 @@ export default function HomePage() {
         abi: MULTICALL_ABI,
         functionName: "mine",
         args: [
-          CONTRACT_ADDRESSES.provider as Address,
+          CONTRACT_ADDRESSES.faction as Address,
           BigInt(selectedIndex),
           epochId,
           deadline,
@@ -697,14 +697,14 @@ export default function HomePage() {
         addressLabel: "—",
       };
     }
-    const minerAddr = slotState.miner;
-    const fallback = formatAddress(minerAddr);
+    const rigAddr = slotState.rig;
+    const fallback = formatAddress(rigAddr);
     const isYou =
       !!address &&
-      minerAddr.toLowerCase() === (address as string).toLowerCase();
+      rigAddr.toLowerCase() === (address as string).toLowerCase();
 
     const fallbackAvatarUrl = `https://api.dicebear.com/7.x/shapes/svg?seed=${encodeURIComponent(
-      minerAddr.toLowerCase(),
+      rigAddr.toLowerCase(),
     )}`;
 
     const profile = neynarUser?.user ?? null;
@@ -787,12 +787,12 @@ export default function HomePage() {
     : "—";
 
   // Calculate USD values for CORE
-  const minedUsdValue = minerState && minerState.unitPrice > 0n && interpolatedMined !== null
-    ? (Number(formatEther(interpolatedMined)) * Number(formatEther(minerState.unitPrice)) * ethUsdPrice).toFixed(2)
+  const minedUsdValue = rigState && rigState.unitPrice > 0n && interpolatedMined !== null
+    ? (Number(formatEther(interpolatedMined)) * Number(formatEther(rigState.unitPrice)) * ethUsdPrice).toFixed(2)
     : "0.00";
 
-  const glazeRateUsdValue = minerState && slotState && minerState.unitPrice > 0n
-    ? (Number(formatUnits(slotState.ups, CORE_DECIMALS)) * Number(formatEther(minerState.unitPrice)) * ethUsdPrice).toFixed(4)
+  const glazeRateUsdValue = rigState && slotState && rigState.unitPrice > 0n
+    ? (Number(formatUnits(slotState.ups, CORE_DECIMALS)) * Number(formatEther(rigState.unitPrice)) * ethUsdPrice).toFixed(4)
     : "0.0000";
 
   // Calculate PNL: currentPrice * 0.8 - initPrice / 2
@@ -829,12 +829,12 @@ export default function HomePage() {
     : initialsFrom(occupantInitialsSource);
 
   const unitBalanceDisplay =
-    minerState && minerState.unitBalance !== undefined
-      ? formatTokenAmount(minerState.unitBalance, CORE_DECIMALS, 2)
+    rigState && rigState.unitBalance !== undefined
+      ? formatTokenAmount(rigState.unitBalance, CORE_DECIMALS, 2)
       : "—";
   const ethBalanceDisplay =
-    minerState && minerState.ethBalance !== undefined
-      ? formatEth(minerState.ethBalance, 4)
+    rigState && rigState.ethBalance !== undefined
+      ? formatEth(rigState.ethBalance, 4)
       : "—";
 
   const buttonLabel = useMemo(() => {
@@ -945,7 +945,7 @@ export default function HomePage() {
                   className="object-cover"
                 />
                 <AvatarFallback className="bg-zinc-600 text-white text-xs font-bold uppercase">
-                  {minerState ? (
+                  {rigState ? (
                     occupantFallbackInitials
                   ) : (
                     <CircleUserRound className="h-4 w-4" />

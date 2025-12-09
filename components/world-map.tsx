@@ -16,7 +16,7 @@ type SlotState = {
   multiplier: bigint;
   multiplierTime: bigint;
   mined: bigint;
-  miner: string;
+  rig: string;
   uri: string;
 };
 
@@ -95,7 +95,7 @@ export function WorldMap({
           const territory = territories[pixel.id];
           const isSelected = selectedIndex === pixel.id;
           const isOwned = ownedIndices.has(pixel.id);
-          const hasOwner = territory && territory.miner && territory.miner !== zeroAddress;
+          const hasOwner = territory && territory.rig && territory.rig !== zeroAddress;
 
           // Get the base color from contract
           let bgColor = "#000000";

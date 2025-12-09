@@ -22,7 +22,7 @@ type MiniAppContext = {
   };
 };
 
-type MinerState = {
+type RigState = {
   ups: bigint;
   unitPrice: bigint;
   unitBalance: bigint;
@@ -39,7 +39,7 @@ type SlotState = {
   multiplier: bigint;
   multiplierTime: bigint;
   mined: bigint;
-  miner: Address;
+  rig: Address;
   uri: string;
 };
 
@@ -84,11 +84,11 @@ export default function AboutPage() {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const { address } = useAccount();
 
-  // Fetch miner state
-  const { data: rawMinerState } = useReadContract({
+  // Fetch rig state
+  const { data: rawRigState } = useReadContract({
     address: CONTRACT_ADDRESSES.multicall,
     abi: MULTICALL_ABI,
-    functionName: "getMiner",
+    functionName: "getRig",
     args: [address ?? zeroAddress],
     chainId: base.id,
     query: {
@@ -96,10 +96,10 @@ export default function AboutPage() {
     },
   });
 
-  const minerState = useMemo(() => {
-    if (!rawMinerState) return undefined;
-    return rawMinerState as unknown as MinerState;
-  }, [rawMinerState]);
+  const rigState = useMemo(() => {
+    if (!rawRigState) return undefined;
+    return rawRigState as unknown as RigState;
+  }, [rawRigState]);
 
   // Fetch all slots
   const { data: rawAllSlots } = useReadContract({
@@ -123,7 +123,7 @@ export default function AboutPage() {
     if (!address || !allSlots || allSlots.length === 0) return new Set<number>();
     const owned = new Set<number>();
     allSlots.forEach((slot, index) => {
-      if (slot.miner.toLowerCase() === address.toLowerCase()) {
+      if (slot.rig.toLowerCase() === address.toLowerCase()) {
         owned.add(index);
       }
     });
@@ -143,7 +143,7 @@ export default function AboutPage() {
 
   const occupantDisplayIsYou = useMemo(() => {
     if (!slotState || !address) return false;
-    return slotState.miner.toLowerCase() === address.toLowerCase();
+    return slotState.rig.toLowerCase() === address.toLowerCase();
   }, [slotState, address]);
 
   const [interpolatedMined, setInterpolatedMined] = useState<bigint | null>(null);
@@ -295,7 +295,7 @@ export default function AboutPage() {
               <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
                 <div className="flex justify-between items-center">
                   <span className="text-zinc-400">CORE</span>
-                  <span className="text-white font-bold flex items-center gap-1"><CoreIcon size={10} />{minerState ? formatTokenAmount(minerState.unitBalance, CORE_DECIMALS, 2) : "—"}</span>
+                  <span className="text-white font-bold flex items-center gap-1"><CoreIcon size={10} />{rigState ? formatTokenAmount(rigState.unitBalance, CORE_DECIMALS, 2) : "—"}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-zinc-400">Mined</span>
@@ -305,7 +305,7 @@ export default function AboutPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-zinc-400">ETH</span>
-                  <span className="text-white font-bold">Ξ{minerState ? formatEth(minerState.ethBalance, 4) : "—"}</span>
+                  <span className="text-white font-bold">Ξ{rigState ? formatEth(rigState.ethBalance, 4) : "—"}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-zinc-400">Spent</span>
@@ -315,8 +315,8 @@ export default function AboutPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-zinc-400">WETH</span>
-                  <span className="text-white font-bold">Ξ{minerState && minerState.wethBalance !== undefined
-                    ? formatEth(minerState.wethBalance, 4)
+                  <span className="text-white font-bold">Ξ{rigState && rigState.wethBalance !== undefined
+                    ? formatEth(rigState.wethBalance, 4)
                     : "—"}</span>
                 </div>
                 <div className="flex justify-between">
