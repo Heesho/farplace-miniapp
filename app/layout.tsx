@@ -9,7 +9,7 @@ const spaceMono = Space_Mono({
   variable: "--font-space-mono",
 });
 
-const appDomain = "https://pixel-miner-miniapp.vercel.app";
+const appDomain = "https://farplace-miniapp.vercel.app";
 const heroImageUrl = `${appDomain}/media/hero.png`;
 const splashImageUrl = `${appDomain}/media/splash.png`;
 
